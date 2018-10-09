@@ -5,6 +5,7 @@
 	CloseHandle(handle2); \
 	return FALSE;
 
+BOOL cpyFHTH(HANDLE, HANDLE);
 #pragma region section 1
 
 //Problem 1
@@ -25,14 +26,14 @@ void PrintError() {
 
 
 //Problem 2
-void PrintInfo(_TCHAR **envp) {
+void PrintInfo(TCHAR **envp) {
 	const DWORD BufferSize = 2500;
-	_TCHAR Buffer[BufferSize];
+	TCHAR Buffer[BufferSize];
 
 	GetCurrentDirectory(BufferSize, Buffer);
 	_tprintf(_T("Current Directory: %s\n"), Buffer);
 
-	_TCHAR** current = envp;
+	TCHAR** current = envp;
 	_tprintf(_T("Envirement variables:\n"));
 	while(*current) {
 		_tprintf(_T("%s\n"), *current);
@@ -70,7 +71,7 @@ void PrintInfo(_TCHAR **envp) {
 BOOL cpyFile(TCHAR* name1, TCHAR* name2) {
 
 	const DWORD BufferSize = 10;
-	_TCHAR Buffer[BufferSize];
+	TCHAR Buffer[BufferSize];
 
 	DWORD BytesRead, BytesWritten;
 
@@ -88,7 +89,7 @@ BOOL cpyFile(TCHAR* name1, TCHAR* name2) {
 	}
 
 	while(ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
-		if(!WriteFile(file2, Buffer, BytesRead, &BytesWritten, NULL)\
+		if(!WriteFile(file2, Buffer, BytesRead, &BytesWritten, NULL)
 			|| BytesWritten != BytesRead) {
 			handleFileError(file1,file2);
 		}
@@ -106,7 +107,7 @@ BOOL cpyFile(TCHAR* name1, TCHAR* name2) {
 BOOL cpyFileReverse(TCHAR* name1, TCHAR* name2) {
 
 	const DWORD BufferSize = 2000;
-	_TCHAR Buffer[BufferSize];
+	TCHAR Buffer[BufferSize];
 
 	DWORD BytesRead, BytesWritten;
 
@@ -143,7 +144,7 @@ BOOL cpyFileReverse(TCHAR* name1, TCHAR* name2) {
 			handleFileError(file1,file2);
 		}
 		//reversing
-		int count = BytesRead/sizeof(_TCHAR);
+		int count = BytesRead/sizeof(TCHAR);
 		for (int i = 0; i < count/2; i++) {
 			TCHAR tmp = Buffer[i];
 			Buffer[i] = Buffer[count - i - 1];
@@ -172,7 +173,7 @@ enum COPY_ELEMENT_TYPE {
 //Problem 5
 BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE elemType) {
 	const DWORD BufferSize = 10;
-	_TCHAR Buffer[BufferSize];
+	TCHAR Buffer[BufferSize];
 
 	HANDLE file1 = CreateFile(name1, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file1 == INVALID_HANDLE_VALUE) {
@@ -206,14 +207,14 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 		}
 	} else if (elemType == ELEMENT_WORD || elemType == ELEMENT_LINE) {
 		while((ReadResponse = ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL)) && BytesRead > 0) {
-			int i = 0;
-			for(; i < BytesRead / sizeof(_TCHAR) && OverallWritten < elemCount; i++) {
+			unsigned int i = 0;
+			for(; i < BytesRead / sizeof(TCHAR) && OverallWritten < elemCount; i++) {
 				if (Buffer[i] == '\n' || 
 					(elemType == ELEMENT_WORD && Buffer[i] == ' ')) {
 					OverallWritten++;
 				}
 			}
-			if (!WriteFile(file2, Buffer, i * sizeof(_TCHAR), &BytesWritten, NULL) 
+			if (!WriteFile(file2, Buffer, i * sizeof(TCHAR), &BytesWritten, NULL) 
 				|| BytesWritten != i * sizeof(TCHAR)) {
 				handleFileError(file1,file2);
 			}
@@ -234,18 +235,157 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 	return TRUE;
 }
 
+
+//Problem 7
+BOOL cpyFileToStdout(TCHAR* name) {
+
+	HANDLE file = CreateFile(name, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+
+	HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (stdoutHandle == INVALID_HANDLE_VALUE) {
+		CloseHandle(file);
+		PrintError();
+		return FALSE;
+	}
+	BOOL result = cpyFHTH(file, stdoutHandle);
+	CloseHandle(file);
+	return result;
+}
+
+//
+////Problem 8
+//BOOL cpyStdinToFile(TCHAR* name) {
+//    DWORD cNumRead, fdwMode; 
+//    INPUT_RECORD irInBuf[128];
+//
+//	HANDLE file = CreateFile(name, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+//	if (file == INVALID_HANDLE_VALUE) {
+//		PrintError();
+//		return FALSE;
+//	}
+//
+//	HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
+//	if (stdinHandle == INVALID_HANDLE_VALUE) {
+//		CloseHandle(file);
+//		PrintError();
+//		return FALSE;
+//	}
+//
+//	if (!ReadConsoleInput(stdinHandle, irInBuf, 128, &cNumRead))
+//			PrintError();
+//
+//	BOOL result = cpyFHTH(stdinHandle, file);
+//	CloseHandle(file);
+//	return result;
+//}
+
+
+// Problem 10
+// copy from handle1 to handle 2
+BOOL cpyFHTH(HANDLE handle1, HANDLE handle2) {
+	const DWORD BufferSize = 10;
+	TCHAR Buffer[BufferSize];
+	DWORD BytesRead, BytesWritten;
+
+	while(ReadFile(handle1, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
+		if(!WriteFile(handle2, Buffer, BytesRead, &BytesWritten, NULL)
+			|| BytesWritten != BytesRead) {
+			PrintError();
+			return FALSE;
+		}
+	}
+	if (BytesRead > 0) {
+		PrintError();
+		return FALSE;
+	}
+	return TRUE;
+}
+
+
+// Problem 11
+BOOL cpyAsciiToUnicode(TCHAR* name1, TCHAR* name2) {
+	const DWORD BufferSize = 100;
+	char Buffer[BufferSize];
+
+	DWORD BytesRead, BytesWritten;
+
+	HANDLE file1 = CreateFile(name1, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file1 == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+
+	HANDLE file2 = CreateFile(name2, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file2 == INVALID_HANDLE_VALUE) {
+		CloseHandle(file1);
+		PrintError();
+		return FALSE;
+	}
+
+	while(ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
+		TCHAR unistring[BufferSize];
+		int converted = MultiByteToWideChar(CP_OEMCP, 0, Buffer, -1, unistring, BufferSize);
+
+		if(!WriteFile(file2, unistring, BytesRead, &BytesWritten, NULL)
+			|| BytesWritten != BytesRead) {
+			handleFileError(file1,file2);
+		}
+	}
+	if (BytesRead > 0) {
+		handleFileError(file1,file2);
+	}
+	CloseHandle(file1);
+	CloseHandle(file2);
+	return TRUE;
+}
+
+
+// Problem 12
+// arguments without executable's name
+BOOL printEnvironmentVariable(int argc, TCHAR* argv[], TCHAR **envp) {
+	if (argc == 0) {
+		while(*envp) {
+			_tprintf(_T("%s\n"), *envp);
+			envp++;
+		}
+		return TRUE;
+	}
+	
+	HANDLE file = CreateFile(argv[0], GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	DWORD BytesWritten;
+	while(*envp) {
+		DWORD len = _tcslen(*envp);
+		if(!WriteFile(file, *envp, len, &BytesWritten, NULL)
+			|| BytesWritten != len) {
+			CloseHandle(file);
+			PrintError();
+			return FALSE;
+		}
+		envp++;
+	}
+	return TRUE;
+}
 #pragma endregion
 
-int _tmain(int argc, _TCHAR* argv[], _TCHAR **envp) {
+int _tmain(int argc, TCHAR* argv[], TCHAR **envp) {
 	//Tests
 	if (argc == 1) {
-		_tprintf(_T("No arguments are given\nOS test [test_no [subtest_no]]"));
+		_tprintf(_T("No arguments are given\nOS test [test_no [subtest_no | argv]]"));
 		return 0;
 	}
 	if (_tcscmp(argv[1], _T("test")) == 0 && argc >= 3) {
 		switch(_tstoi(argv[2])) {
 		case 1:
 			SetLastError(3);
+			_tprintf(_T("Error code 3: "));
 			PrintError();
 			break;
 		case 2:
@@ -277,6 +417,42 @@ int _tmain(int argc, _TCHAR* argv[], _TCHAR **envp) {
 			}
 			break;
 				}
+
+		case 6:
+			_tprintf(_T("Not implemented yet\n"));
+			break;
+
+		case 7:
+			_tprintf(_T("copying file 3.txt to stdout\n"));
+			cpyFileToStdout(_T("3.txt"));
+			_tprintf(_T("\n"));
+			break;
+
+		case 8:
+			_tprintf(_T("Not implemented yet\n"));
+			//_tprintf(_T("copying stdin to 3.txt\n"));
+			//cpyStdinToFile(_T("3.txt"));
+			//_tprintf(_T("\n"));
+			break;
+
+		case 9:
+			_tprintf(_T("Not implemented yet\n"));
+			break;
+
+		case 10:
+			_tprintf(_T("For testing the 'Problem 10' implementation run the 'test 7'\n"));
+			break;
+
+		case 11:
+			_tprintf(_T("copying ASCII.txt to Unicode.txt\n"));
+			cpyAsciiToUnicode(_T("ASCII.txt"), _T("Unicode.txt"));
+			_tprintf(_T("\n"));
+			break;
+		case 12:
+			printEnvironmentVariable(argc - 3, argv + 3, envp);
+			_tprintf(_T("\n"));
+			break;
+
 		default:
 			_tprintf(_T("Unknown test\n"));
 		}

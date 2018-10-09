@@ -37,5 +37,14 @@
     <None Include="2.txt">
       <Filter>Файлы ресурсов</Filter>
     </None>
+    <None Include="3.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="ASCII.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="Unicode.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
   </ItemGroup>
 </Project>
