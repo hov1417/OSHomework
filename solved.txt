@@ -10,12 +10,12 @@
 	9 	
 	10	solved
 	11	solved
-	12	solved ?
+	12	solved
 	13	
-	14	
-	15	
-	16	
-	17	
+	14	solved
+	15	solved
+	16	solved
+	17	solved
 2
 	1
 	2
