@@ -1,11 +1,6 @@
 #include "StdAfx.h"
 #include "functions1.h"
 
-#define handleFileError(handle1,handle2)  PrintError(); \
-	CloseHandle(handle1); \
-	CloseHandle(handle2); \
-	return FALSE;
-
 //Problem 1
 void PrintError() {
 	LPVOID lpMsgBuf;
@@ -241,7 +236,7 @@ BOOL copyFileToStdout(TCHAR* name) {
 		return FALSE;
 	}
 
-	BOOL result = copyFHTH(file, stdoutHandle);
+	BOOL result = copyHTH(file, stdoutHandle);
 	CloseHandle(file);
 	return result;
 }
@@ -275,8 +270,8 @@ BOOL copyStdinToFile(TCHAR* name) {
 
 // Problem 10
 // copy from handle1 to handle 2
-BOOL copyFHTH(HANDLE handle1, HANDLE handle2) {
-	const DWORD BufferSize = 10;
+BOOL copyHTH(HANDLE handle1, HANDLE handle2) {
+	const DWORD BufferSize = 100;
 	TCHAR Buffer[BufferSize];
 	DWORD BytesRead, BytesWritten;
 
@@ -445,6 +440,7 @@ BOOL addToPATH(int argc, TCHAR* argv[]) {
 
 //Problem 16
 // arguments without executable's name
+// (also Section 2 Problem 5)
 BOOL calculateWords(int argc, TCHAR* argv[]) {
 	const DWORD BufferSize = 1000;
 	TCHAR Buffer[BufferSize];
@@ -458,6 +454,14 @@ BOOL calculateWords(int argc, TCHAR* argv[]) {
 		return FALSE;
 	}
 	DWORD BytesRead, BytesWritten;
+	
+	if(!GetCurrentDirectory(BufferSize, Buffer)) {
+		PrintError();
+		return FALSE;
+	}
+	_tprintf(_T("Directory: %s\n"), Buffer);
+
+
 	for(int i = 0; i < argc; i++) {
 		HANDLE file = CreateFile(argv[i], GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (file == INVALID_HANDLE_VALUE) {

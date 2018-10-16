@@ -17,7 +17,7 @@ BOOL copyFile(TCHAR* name1, TCHAR* name2);
 BOOL copyFileReverse(TCHAR* name1, TCHAR* name2);
 BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE elemType);
 BOOL copyFileToStdout(TCHAR* name);
-BOOL copyFHTH(HANDLE handle1, HANDLE handle2);
+BOOL copyHTH(HANDLE handle1, HANDLE handle2);
 BOOL cpyAsciiToUnicode(TCHAR* name1, TCHAR* name2);
 BOOL printEnvironmentVariable(int argc, TCHAR* argv[], TCHAR *envp[]);
 BOOL changeTime(TCHAR* fileName);

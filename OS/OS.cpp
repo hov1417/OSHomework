@@ -1,10 +1,11 @@
 #include "stdafx.h"
 #include "functions1.h"
+#include "functions2.h"
 
 int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 	//Tests
 	if (argc == 1) {
-		_tprintf(_T("No arguments are given\nOS test [test_no [subtest_no | argv]]"));
+		_tprintf(_T("No arguments are given\n%s test [test_no [subtest_no | argv]]"), argv[0]);
 		return 0;
 	}
 	if (_tcscmp(argv[1], _T("test")) == 0 && argc >= 3) {
@@ -19,7 +20,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 			break;
 		case 3:
 			_tprintf(_T("copying file 1.txt to 2.txt\n"));
-			copyFile(_T("1.txt"), _T("2.txt"));
+			copyFile(_T("a/1.txt"), _T("2.txt"));
 			break;
 		case 4:
 			_tprintf(_T("copying file 1.txt to 2.txt reversed\n"));
@@ -104,6 +105,41 @@ int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 			break;
 
 
+		default:
+			_tprintf(_T("Unknown test\n"));
+		}
+
+	}
+	
+	if (_tcscmp(argv[1], _T("test2")) == 0 && argc >= 3) {
+		switch(_tstoi(argv[2])) {
+		case 1:
+			_tprintf(_T("Current directory info\n"));
+			PrintCurrentDirectory();
+			break;
+		case 2:
+			_tprintf(_T("copy old.txt to new.txt, given directory\n"));
+			CopyOldToNew(argc - 3, argv + 3);
+			break;
+		case 3:
+			_tprintf(_T("print Directories\n"));
+			PrintDirectories();
+			break;
+		case 4:
+			_tprintf(_T("print Leaf Subdirectories\n"));
+			LeafSubDirectories();
+			break;
+		case 5:
+			_tprintf(_T("see problem 16 (test 16)\n"));
+			break;
+		case 6:
+			_tprintf(_T("Unite Files\n"));
+			UniteFiles(argc - 3, argv + 3);
+			break;
+		case 7:
+			_tprintf(_T("Last directory files\n"));
+			LastDirectory(argc - 3, argv + 3);
+			break;
 		default:
 			_tprintf(_T("Unknown test\n"));
 		}

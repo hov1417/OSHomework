@@ -17,13 +17,13 @@
 	16	solved
 	17	solved
 2
-	1
-	2
-	3
-	4
-	5
-	6
-	7
+	1	solved
+	2	solved
+	3	solved
+	4	solved
+	5	solved
+	6	solved
+	7	solved
 	8
 	9
 	10
