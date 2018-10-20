@@ -31,24 +31,38 @@ int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 			switch(subtest) {
 			case 1:
 				_tprintf(_T("copying 120 bytes from 1.txt to 2.txt\n"));
-				copyElements(_T("1.txt"), _T("2.txt"), 120, ELEMENT_BYTE);
+				firstNElements(_T("1.txt"), _T("2.txt"), 120, ELEMENT_BYTE);
 				break;
 			case 2:
 				_tprintf(_T("copying 10 words from 1.txt to 2.txt\n"));
-				copyElements(_T("1.txt"), _T("2.txt"), 10, ELEMENT_WORD);
+				firstNElements(_T("1.txt"), _T("2.txt"), 10, ELEMENT_WORD);
 				break;
 			case 3:
 				_tprintf(_T("copying 3 lines from 1.txt to 2.txt\n"));
-				copyElements(_T("1.txt"), _T("2.txt"), 3, ELEMENT_LINE);
+				firstNElements(_T("1.txt"), _T("2.txt"), 3, ELEMENT_LINE);
 				break;
 			}
 			break;
 				}
 
-		case 6:
-			_tprintf(_T("Not implemented yet\n"));
+		case 6: {
+			DWORD subtest = (argc == 4) ? _tstoi(argv[3]) : 1;
+			switch(subtest) {
+			case 1:
+				_tprintf(_T("copying last 120 bytes from 1.txt to 2.txt\n"));
+				lastNElements(_T("1.txt"), _T("2.txt"), 120, ELEMENT_BYTE);
+				break;
+			case 2:
+				_tprintf(_T("copying last 10 words from 1.txt to 2.txt\n"));
+				lastNElements(_T("1.txt"), _T("2.txt"), 10, ELEMENT_WORD);
+				break;
+			case 3:
+				_tprintf(_T("copying last 3 lines from 1.txt to 2.txt\n"));
+				lastNElements(_T("1.txt"), _T("2.txt"), 3, ELEMENT_LINE);
+				break;
+			}
 			break;
-
+				}
 		case 7:
 			_tprintf(_T("copying file 3.txt to stdout\n"));
 			copyFileToStdout(_T("3.txt"));
@@ -56,14 +70,15 @@ int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 			break;
 
 		case 8:
-			_tprintf(_T("Not implemented yet\n"));
-			//_tprintf(_T("copying stdin to 3.txt\n"));
-			//copyStdinToFile(_T("3.txt"));
-			//_tprintf(_T("\n"));
+			_tprintf(_T("copying stdin to 3.txt\n"));
+			copyStdinToFile(_T("3.txt"));
+			_tprintf(_T("\n"));
 			break;
 
 		case 9:
-			_tprintf(_T("Not implemented yet\n"));
+			_tprintf(_T("copying stdin to stdout\ninput text and press enter\n"));
+			copyStdinToStdout();
+			_tprintf(_T("\n"));
 			break;
 
 		case 10:
@@ -81,7 +96,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR *envp[]) {
 			_tprintf(_T("\n"));
 			break;
 		case 13:
-			_tprintf(_T("Not implemented yet\n"));
+			_tprintf(_T("Last n lines\n"));
+			printLastNLines(argc - 3, argv + 3);
 			break;
 		case 14:
 			_tprintf(_T("changing file creation date\n"));

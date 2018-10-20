@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "functions1.h"
 
+#define GeneralWrite(isFile, h, B, R, W) (isFile ? WriteFile(h, B, R, W, NULL) : WriteConsole(h, B, R, W, NULL))
+
 //Problem 1
 void PrintError() {
 	LPVOID lpMsgBuf;
@@ -121,7 +123,7 @@ BOOL copyFileReverse(TCHAR* name1, TCHAR* name2) {
 	DWORD currentPointer = SetFilePointer(file1, 0, NULL, FILE_CURRENT);
 	DWORD BytesToRead = BufferSize;
 	while(currentPointer != 0) {
-		if(SetFilePointer(file1, -BufferSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+		if(SetFilePointer(file1, -(LONG)BufferSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
 			if(GetLastError() == ERROR_NEGATIVE_SEEK) { //seting pointer before begining
 				BytesToRead = currentPointer;
 				SetFilePointer(file1, 0, NULL, FILE_BEGIN);
@@ -132,8 +134,8 @@ BOOL copyFileReverse(TCHAR* name1, TCHAR* name2) {
 		if(!ReadFile(file1, Buffer, BytesToRead, &BytesRead, NULL)) {
 			handleFileError(file1,file2);
 		}
-		//returning before readed
-		if(SetFilePointer(file1, -BytesRead, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+		//returning before read
+		if(SetFilePointer(file1, -(LONG)BytesRead, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
 			handleFileError(file1,file2);
 		}
 		//reversing
@@ -156,7 +158,7 @@ BOOL copyFileReverse(TCHAR* name1, TCHAR* name2) {
 }
 
 //Problem 5
-BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE elemType) {
+BOOL firstNElements(TCHAR* name1, TCHAR* name2, UINT n, COPY_ELEMENT_TYPE elemType) {
 	const DWORD BufferSize = 10;
 	TCHAR Buffer[BufferSize];
 
@@ -177,9 +179,9 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 	DWORD OverallWritten = 0, BytesRead, BytesWritten;
 	if (elemType == ELEMENT_BYTE) {
 		while((ReadResponse = ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL)) && BytesRead > 0) {
-			if (OverallWritten + BytesRead > elemCount) {
-				if (!WriteFile(file2, Buffer, elemCount - OverallWritten, &BytesWritten, NULL) 
-					|| BytesWritten != elemCount - OverallWritten) {
+			if (OverallWritten + BytesRead > n) {
+				if (!WriteFile(file2, Buffer, n - OverallWritten, &BytesWritten, NULL) 
+					|| BytesWritten != n - OverallWritten) {
 						handleFileError(file1,file2);
 				}
 				break;
@@ -192,8 +194,8 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 		}
 	} else if (elemType == ELEMENT_WORD || elemType == ELEMENT_LINE) {
 		while((ReadResponse = ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL)) && BytesRead > 0) {
-			unsigned int i = 0;
-			for(; i < BytesRead / sizeof(TCHAR) && OverallWritten < elemCount; i++) {
+			UINT i = 0;
+			for(; i < BytesRead / sizeof(TCHAR) && OverallWritten < n; i++) {
 				if (Buffer[i] == '\n' || 
 					(elemType == ELEMENT_WORD && Buffer[i] == ' ')) {
 						OverallWritten++;
@@ -203,7 +205,7 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 				|| BytesWritten != i * sizeof(TCHAR)) {
 					handleFileError(file1,file2);
 			}
-			if (OverallWritten == elemCount) {
+			if (OverallWritten == n) {
 				break;
 			}
 		}
@@ -220,9 +222,85 @@ BOOL copyElements(TCHAR* name1, TCHAR* name2, int elemCount, COPY_ELEMENT_TYPE e
 	return TRUE;
 }
 
+BOOL lastNElements(HANDLE handle1, HANDLE handle2, UINT n, COPY_ELEMENT_TYPE elemType, bool isHandle2File) {
+	const DWORD BufferSize = 10;
+	TCHAR Buffer[BufferSize];
+
+	DWORD OverallWritten = 0, BytesRead = -1;
+	DWORD BytesToRead = BufferSize;
+	if (elemType == ELEMENT_BYTE) {
+		if(SetFilePointer(handle1, -(LONG)n, NULL, FILE_END) == INVALID_SET_FILE_POINTER){
+			if(GetLastError() == ERROR_NEGATIVE_SEEK) { //seting pointer before begining
+				SetFilePointer(handle1, 0, NULL, FILE_BEGIN);
+			} else {
+				return FALSE;
+			}
+		}
+	} else if (elemType == ELEMENT_WORD || elemType == ELEMENT_LINE) {
+		if(SetFilePointer(handle1, 0, NULL, FILE_END) == INVALID_SET_FILE_POINTER) {
+			return FALSE;
+		}
+		UINT elemCount = 0;
+		while(BytesRead != 0) {
+			if(SetFilePointer(handle1, -(LONG)BufferSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+				if(GetLastError() == ERROR_NEGATIVE_SEEK) { //seting pointer before begining
+					BytesToRead = SetFilePointer(handle1, 0, NULL, FILE_CURRENT);
+					SetFilePointer(handle1, 0, NULL, FILE_BEGIN);
+				} else {
+					return FALSE;
+				}
+			}
+			if(!ReadFile(handle1, Buffer, BytesToRead, &BytesRead, NULL)) {
+				return FALSE;
+			}
+			//returning before read
+			if(SetFilePointer(handle1, -(LONG)BytesRead, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+				return FALSE;
+			}
+			//counting
+			UINT countTCHAR = BytesRead/sizeof(TCHAR);
+			int i = countTCHAR - 1;
+			for(; i >= 0 && elemCount != n; i--) {
+				if(Buffer[i] == '\n' || 
+					(elemType == ELEMENT_WORD && Buffer[i] == ' ')) {
+					elemCount++;
+				}
+			}
+			if (elemCount == n) {
+				BOOL x = SetFilePointer(handle1, (LONG)((i + 1) * sizeof(TCHAR)), NULL, FILE_CURRENT);
+				break;
+			}
+		}
+	} else {
+		return FALSE;
+	}
+
+	BOOL result = copyHTH(handle1, handle2, isHandle2File);
+	return result;
+}
+
+BOOL lastNElements(TCHAR* name1, TCHAR* name2, UINT n, COPY_ELEMENT_TYPE elemType) {
+	HANDLE file1 = CreateFile(name1, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file1 == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+
+	HANDLE file2 = CreateFile(name2, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file2 == INVALID_HANDLE_VALUE) {
+		CloseHandle(file1);
+		PrintError();
+		return FALSE;
+	}
+
+
+	BOOL result = lastNElements(file1, file2, n, elemType, true);
+	CloseHandle(file1);
+	CloseHandle(file2);
+	return result;
+}
 //Problem 7
 BOOL copyFileToStdout(TCHAR* name) {
-
 	HANDLE file = CreateFile(name, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file == INVALID_HANDLE_VALUE) {
 		PrintError();
@@ -241,48 +319,115 @@ BOOL copyFileToStdout(TCHAR* name) {
 	return result;
 }
 
-//Problem 8 not fully implemented
+//Problem 8
 BOOL copyStdinToFile(TCHAR* name) {
-	//DWORD cNumRead, fdwMode; 
-	//INPUT_RECORD irInBuf[128];
+	HANDLE file = CreateFile(name, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
 
-	//HANDLE file = CreateFile(name, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	//if (file == INVALID_HANDLE_VALUE) {
-	//	PrintError();
-	//	return FALSE;
-	//}
+	HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
+	if (stdinHandle == INVALID_HANDLE_VALUE) {
+		CloseHandle(file);
+		PrintError();
+		return FALSE;
+	}
+	DWORD BytesWritten, EventNumber;
+	INPUT_RECORD Buffer[128];
+	while(true) {
+		if (!ReadConsoleInput(stdinHandle, Buffer, 128, &EventNumber)) { //for breaking on "new line" event
+			PrintError();
+			CloseHandle(file);
+			return FALSE;
+		}
+		bool breakThis = false;
+		for (UINT i = 0; i < EventNumber; i++) {
+            if(Buffer[i].EventType == KEY_EVENT && Buffer[i].Event.KeyEvent.bKeyDown) {
+				KEY_EVENT_RECORD keyEvent = Buffer[i].Event.KeyEvent;
+				if(keyEvent.wVirtualKeyCode == 13) {
+					breakThis = true;
+					break;
+				}
+				printf(&keyEvent.uChar.AsciiChar);
+				if(!WriteFile(file, &keyEvent.uChar.AsciiChar, 1, &BytesWritten, NULL) || BytesWritten != 1) {
+					PrintError();
+					CloseHandle(file);
+					return FALSE;
+				}
+            }
+        }
+		if (breakThis) {
+			break;
+		}
+	}
 
-	//HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
-	//if (stdinHandle == INVALID_HANDLE_VALUE) {
-	//	CloseHandle(file);
-	//	PrintError();
-	//	return FALSE;
-	//}
+	CloseHandle(file);
+	return TRUE;
+}
 
-	//if (!ReadConsoleInput(stdinHandle, irInBuf, 128, &cNumRead))
-	//	PrintError();
+//Problem 9
+BOOL copyStdinToStdout() {
+	HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (stdoutHandle == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
+	if (stdinHandle == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
 
-	//BOOL result = copyFHTH(stdinHandle, file);
-	//CloseHandle(file);
-	//return result;
+	DWORD BytesWritten, EventNumber;
+	INPUT_RECORD Buffer[128];
+	const int inputBufferSize = 10000;
+	char inputBuffer[inputBufferSize];
+	int index = 0;
+	while(true) {
+		if (!ReadConsoleInput(stdinHandle, Buffer, 128, &EventNumber)) { //for breaking on "new line" event
+			PrintError();
+			return FALSE;
+		}
+		for (UINT i = 0; i < EventNumber; i++) {
+            if(Buffer[i].EventType == KEY_EVENT && Buffer[i].Event.KeyEvent.bKeyDown) {
+				KEY_EVENT_RECORD keyEvent = Buffer[i].Event.KeyEvent;
+				if(keyEvent.wVirtualKeyCode == 13) {
+					if(!WriteFile(stdoutHandle, inputBuffer, index, &BytesWritten, NULL) 
+						|| BytesWritten !=  index) {
+						PrintError();
+						return FALSE;
+					}
+					return TRUE;
+				}
+				if(index == inputBufferSize) {
+					_tprintf(_T("buffer is small"));
+					return FALSE;
+				}
+				inputBuffer[index++] = keyEvent.uChar.AsciiChar;
+            }
+        }
+	}
+
 	return TRUE;
 }
 
 // Problem 10
 // copy from handle1 to handle 2
-BOOL copyHTH(HANDLE handle1, HANDLE handle2) {
+BOOL copyHTH(HANDLE handle1, HANDLE handle2, bool isFile) {
 	const DWORD BufferSize = 100;
 	TCHAR Buffer[BufferSize];
-	DWORD BytesRead, BytesWritten;
+	DWORD Read, Written;
 
-	while(ReadFile(handle1, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
-		if(!WriteFile(handle2, Buffer, BytesRead, &BytesWritten, NULL)
-			|| BytesWritten != BytesRead) {
+	while(ReadFile(handle1, Buffer, BufferSize, &Read, NULL) && Read > 0) {
+		DWORD readedElements = Read/(isFile ? 1 : sizeof(TCHAR));
+		if(!GeneralWrite(isFile, handle2, Buffer, readedElements, &Written)
+			|| Written != readedElements) {
 				PrintError();
 				return FALSE;
 		}
 	}
-	if (BytesRead > 0) {
+	if (Read > 0) {
 		PrintError();
 		return FALSE;
 	}
@@ -311,7 +456,7 @@ BOOL cpyAsciiToUnicode(TCHAR* name1, TCHAR* name2) {
 
 	while(ReadFile(file1, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
 		TCHAR unistring[BufferSize];
-		for(int i = 0;i < BytesRead; i++) {
+		for(UINT i = 0;i < BytesRead; i++) {
 			unistring[i] = Buffer[i];
 		}
 		char* a = (char*) unistring;
@@ -364,6 +509,82 @@ BOOL printEnvironmentVariable(int argc, TCHAR* argv[], TCHAR *envp[]) {
 	}
 	return TRUE;
 }
+
+
+BOOL printLastNLines(TCHAR* name, UINT n) {
+	const DWORD BufferSize = 2000;
+	TCHAR Buffer[BufferSize];
+
+	DWORD BytesRead = -1;
+
+	HANDLE file = CreateFile(name, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	SetFilePointer(file, 0, NULL, FILE_END);
+	DWORD BytesToRead = BufferSize;
+	UINT newlineCount = 0;
+	while(BytesRead != 0) {
+		if(SetFilePointer(file, -(LONG)BufferSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+			if(GetLastError() == ERROR_NEGATIVE_SEEK) { //seting pointer before begining
+				BytesToRead = SetFilePointer(file, 0, NULL, FILE_CURRENT);
+				SetFilePointer(file, 0, NULL, FILE_BEGIN);
+			} else {
+				CloseHandle(file);
+				return FALSE;
+			}
+		}
+		if(!ReadFile(file, Buffer, BytesToRead, &BytesRead, NULL)) {
+			CloseHandle(file);
+			return FALSE;
+		}
+		//returning before read
+		if(SetFilePointer(file, -(LONG)BytesRead, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER) {
+			CloseHandle(file);
+			return FALSE;
+		}
+		//counting
+		UINT countTCHAR = BytesRead/sizeof(TCHAR);
+		int i = countTCHAR - 1;
+		for(; i >= 0 && newlineCount != n; i--) {
+			if(Buffer[i] == '\n') {
+				newlineCount++;
+			}
+		}
+		if (newlineCount == n) {
+			SetFilePointer(file, (LONG)((i + 1) * sizeof(TCHAR)), NULL, FILE_CURRENT);
+			break;
+		}
+	}
+	HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (stdoutHandle == INVALID_HANDLE_VALUE) {
+		CloseHandle(file);
+		PrintError();
+		return FALSE;
+	}
+	BOOL result = copyHTH(file, stdoutHandle, false);
+
+	CloseHandle(file);
+	return result;
+}
+
+//Problem 13
+BOOL printLastNLines(UINT argc, TCHAR* argv[]) {
+	if (argc < 2) {
+		_tprintf(_T("Not enough arguments are given\n"));
+		return FALSE;
+	}
+	UINT n = _tstoi(argv[0]);
+	for(UINT i = 1; i < argc; i++) {
+		if(!printLastNLines(argv[i], n)) {
+			return FALSE;
+		}
+		_tprintf(_T("\n"));
+	}
+	return TRUE;
+}
+
 
 //Problem 14
 BOOL changeTime(TCHAR* fileName) {
@@ -470,7 +691,7 @@ BOOL calculateWords(int argc, TCHAR* argv[]) {
 		}
 		int wordsNumber = 1;
 		while(ReadFile(file, Buffer, BufferSize, &BytesRead, NULL) && BytesRead > 0) {
-			for(int j = 0; j < BytesRead / sizeof(TCHAR); j++) {
+			for(UINT j = 0; j < BytesRead / sizeof(TCHAR); j++) {
 				if (Buffer[j] == _T(' ') || Buffer[j] == _T('\n')) {
 					wordsNumber++;
 				}
@@ -492,10 +713,24 @@ BOOL calculateWords(int argc, TCHAR* argv[]) {
 	return TRUE;
 }
 
+BOOL WINAPI CtrlHandler(DWORD ctrlType) {
+    if (ctrlType ==CTRL_C_EVENT) {
+        _tprintf(_T("\nCtrl-C exit\n\n"));
+        return FALSE;
+	} else {
+        return TRUE;
+    }
+}
 
 //Problem 17
 // arguments without executable's name
 BOOL printFile(int argc, TCHAR* argv[]) {
+	
+    if (!SetConsoleCtrlHandler(CtrlHandler, TRUE)) {
+		PrintError();
+		return FALSE;
+	}
+
 	const DWORD BufferSize = 1000;
 	TCHAR Buffer[BufferSize];
 	if (argc == 0) {
