@@ -163,6 +163,22 @@ void section2tests(int argc, TCHAR* argv[], TCHAR *envp[]) {
 		_tprintf(_T("Last directory files\n"));
 		LastDirectory(argc - 1, argv + 1);
 		break;
+	case 8:
+		_tprintf(_T("Last n lines for files in directory\n"));
+		LastNLines(argc - 1, argv + 1);
+		break;
+	case 9:
+		_tprintf(_T("Unite Files\n"));
+		UniteFilesInDirectory(argc - 1, argv + 1);
+		break;
+	case 10:
+		_tprintf(_T("Files Sorted\n"));
+		FilesSorted();
+		break;
+	case 11:
+		_tprintf(_T("Files Sorted by names\n"));
+		FilesSortedByNames();
+		break;
 	default:
 		_tprintf(_T("Unknown test\n"));
 	}

@@ -28,7 +28,7 @@ BOOL PrintCurrentDirectory() {
 			GetTimeFormat(ENGLISH,             0, &systemTime, NULL, timeFormatted, bufferSize);
 
 
-			_tprintf(_T("%s\t\t%d bytes\t created on %s %s\n"), fileData.cFileName,
+			_tprintf(_T("%s\t\t%ll bytes\t created on %s %s\n"), fileData.cFileName,
 				((DWORDLONG)fileData.nFileSizeHigh * ((DWORDLONG)MAXDWORD + 1)) +
 				(DWORDLONG)fileData.nFileSizeLow,
 				dateFormatted, timeFormatted);
@@ -39,10 +39,7 @@ BOOL PrintCurrentDirectory() {
 		PrintError();
 		return FALSE;
 	}
-	if(!FindClose(find)) {
-		PrintError();
-		return FALSE;
-	}
+	FindCloseSafe(find);
 	return TRUE;
 }
 
@@ -84,20 +81,18 @@ BOOL PrintDirectories() {
 			}
 		} while(FindNextFile(find, &fileData) != NULL);
 		if(!SetCurrentDirectory(_T(".."))) {
+			FindCloseSafe(find);
 			PrintError();
 			return FALSE;
 		}
 		_tprintf(_T("\n"));
 		if (GetLastError() != ERROR_NO_MORE_FILES) {
+			FindCloseSafe(find);
 			PrintError();
 			return FALSE;
 		}
-		if(!FindClose(find)) {
-			PrintError();
-			return FALSE;
-		}
+		FindCloseSafe(find);
 	} while(HasParent);
-	FindClose(find);
 	return TRUE;
 }
 
@@ -118,10 +113,7 @@ BOOL hasSubCategory(bool * hasSubCategory) {
 				break;
 		}
 	} while(FindNextFile(find, &fileData) != NULL);
-	if(!FindClose(find)) {
-		PrintError();
-		return FALSE;
-	}
+	FindCloseSafe(find);
 	return TRUE;
 }
 
@@ -245,10 +237,7 @@ BOOL LastDirectory(int argc, TCHAR* argv[]) {
 		PrintError();
 		return FALSE;
 	}
-	if(!FindClose(find)) {
-		PrintError();
-		return FALSE;
-	}
+	FindCloseSafe(find);
 	if(_tcscmp(Buffer, _T("")) == 0) {
 		_tprintf(_T("Can't find subdirectory"));
 		return FALSE;
@@ -281,7 +270,164 @@ BOOL LastDirectory(int argc, TCHAR* argv[]) {
 
 	return TRUE;
 }
-//
-//
-//// Problem 8
-//BOOL LastN
+
+
+// Problem 8
+// give only filtered (without executable's name etc.) arguments
+BOOL LastNLines(int argc, TCHAR* argv[]) {
+	if(argc == 0) {
+		_tprintf(_T("Not enough arguments are given\n"));
+		return FALSE;
+	}
+	int n = _tstoi(argv[0]);
+	if(argc >= 2) {
+		if(!SetCurrentDirectory(argv[1])) {
+			PrintError();
+			return FALSE;
+		}
+	}
+
+	WIN32_FIND_DATA fileData;
+	HANDLE find = FindFirstFile(_T(".\\*"), &fileData);
+	if (find == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	do {
+		if(!(fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+			if(!printLastNLines(fileData.cFileName, n)) {
+				return FALSE;
+			}
+			_tprintf(_T("\n"));
+		}
+	} while(FindNextFile(find, &fileData));
+	FindCloseSafe(find);
+	return TRUE;	
+}
+
+// Problem 9
+// give only filtered (without executable's name etc.) arguments
+BOOL UniteFilesInDirectory(int argc, TCHAR* argv[]) {
+	if(argc == 0) {
+		_tprintf(_T("Not enough arguments are given\n"));
+		return FALSE;
+	}
+	if(argc >= 1) {
+		if(!SetCurrentDirectory(argv[0])) {
+			PrintError();
+			return FALSE;
+		}
+	}
+
+	HANDLE file = CreateFile(_T("Text.txt"), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	
+	WIN32_FIND_DATA fileData;
+	HANDLE find = FindFirstFile(_T(".\\*.txt"), &fileData);
+	if (find == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+	
+	HANDLE file2;
+	do {
+		if(!(fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) 
+			&& _tcscmp(fileData.cFileName, _T("Text.txt")) != 0) { // not equal to the writing file
+			file2 = CreateFile(fileData.cFileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file2 == INVALID_HANDLE_VALUE) {
+				PrintError();
+				CloseHandleSafe(file);
+				return FALSE;
+			}
+			if(!copyHTH(file2, file)) {
+				CloseHandleSafe(file);
+				CloseHandleSafe(file2);
+				return FALSE;
+			}
+			CloseHandleSafe(file2);
+		}
+	} while(FindNextFile(find, &fileData));
+	CloseHandleSafe(file);
+	FindCloseSafe(find);
+	return TRUE;
+}
+
+
+int compareFileData(const void* a, const void* b) {
+	WIN32_FIND_DATA x = *((WIN32_FIND_DATA*) a),  
+		y = *((WIN32_FIND_DATA*) b);
+	if(x.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) { // don't sort directories
+		return -1;
+	}
+	if(y.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+		return 1;
+	}
+	if(x.nFileSizeHigh != y.nFileSizeHigh) {
+		return x.nFileSizeHigh - y.nFileSizeHigh;
+	}
+	if(x.nFileSizeLow != y.nFileSizeLow) {
+		return x.nFileSizeLow - y.nFileSizeLow;
+	}
+	return 0;
+}
+// Problem 10
+BOOL FilesSorted() {
+	WIN32_FIND_DATA files[100];
+	int n = 0;
+	
+	WIN32_FIND_DATA fileData;
+	HANDLE find = FindFirstFile(_T(".\\*"), &fileData);
+	if (find == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+
+	do {
+		if(_tcscmp(fileData.cFileName, _T(".")) != 0
+			&& _tcscmp(fileData.cFileName, _T("..")) != 0) {
+				files[n++] = fileData;
+		}
+	} while(FindNextFile(find, &fileData));
+	qsort(files, n, sizeof(WIN32_FIND_DATA), compareFileData);
+	_tprintf(_T("(0 if directory)\n"));
+	for(int i = 0; i < n; i++) {
+		_tprintf(_T("%s\t\t\t%d\n"),files[i].cFileName, 
+			((DWORDLONG)files[i].nFileSizeHigh * ((DWORDLONG)MAXDWORD + 1)) +
+			(DWORDLONG)files[i].nFileSizeLow);
+	}
+	return TRUE;
+}
+
+
+int compareFileDataByNames(const void* a, const void* b) {
+	return _tcscmp(((WIN32_FIND_DATA*)a)->cFileName, ((WIN32_FIND_DATA*)b)->cFileName);
+}
+// Problem 11
+BOOL FilesSortedByNames() {
+	WIN32_FIND_DATA files[100];
+	int n = 0;
+	
+	WIN32_FIND_DATA fileData;
+	HANDLE find = FindFirstFile(_T(".\\*"), &fileData);
+	if (find == INVALID_HANDLE_VALUE) {
+		PrintError();
+		return FALSE;
+	}
+
+	do {
+		if(!(fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			&& _tcscmp(fileData.cFileName, _T(".")) != 0
+			&& _tcscmp(fileData.cFileName, _T("..")) != 0) {
+				files[n++] = fileData;
+		}
+	} while(FindNextFile(find, &fileData));
+	qsort(files, n, sizeof(WIN32_FIND_DATA), compareFileDataByNames);
+
+	for(int i = 0; i < n; i++) {
+		_tprintf(_T("%s\t\t\t\n"),files[i].cFileName);
+	}
+	return TRUE;
+}

@@ -38,3 +38,7 @@ BOOL changeTime(int argc, TCHAR* argv[]);
 BOOL addToPATH(int argc, TCHAR* argv[]);
 BOOL calculateWords(int argc, TCHAR* argv[]);
 BOOL printFile(int argc, TCHAR* argv[]);
+
+
+
+BOOL printLastNLines(TCHAR* name, UINT n);
