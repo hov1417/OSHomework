@@ -3,7 +3,7 @@
 #include "functions2.h"
 
 
-//Problem 1
+// Problem 1
 BOOL PrintCurrentDirectory() {
 	WIN32_FIND_DATA fileData;
 	HANDLE find = FindFirstFile(_T(".\\*"), &fileData);
@@ -27,8 +27,10 @@ BOOL PrintCurrentDirectory() {
 			GetDateFormat(ENGLISH, DATE_SHORTDATE, &systemTime, NULL, dateFormatted, bufferSize);
 			GetTimeFormat(ENGLISH,             0, &systemTime, NULL, timeFormatted, bufferSize);
 
+
 			_tprintf(_T("%s\t\t%d bytes\t created on %s %s\n"), fileData.cFileName,
-				(fileData.nFileSizeHigh * (MAXDWORD + 1)) + fileData.nFileSizeLow,
+				((DWORDLONG)fileData.nFileSizeHigh * ((DWORDLONG)MAXDWORD + 1)) +
+				(DWORDLONG)fileData.nFileSizeLow,
 				dateFormatted, timeFormatted);
 		}
 	} while(FindNextFile(find, &fileData) != NULL);
@@ -45,7 +47,8 @@ BOOL PrintCurrentDirectory() {
 }
 
 
-//Problem 2
+// Problem 2
+// give only filtered (without executable's name etc.) arguments
 BOOL CopyOldToNew(int argc, TCHAR* argv[]) {
 	if (argc != 1) {
 		_tprintf(_T("Directory name not specified\n"));
@@ -59,7 +62,7 @@ BOOL CopyOldToNew(int argc, TCHAR* argv[]) {
 }
 
 
-//Problem 3
+// Problem 3
 BOOL PrintDirectories() {
 	bool HasParent;
 	HANDLE find;
@@ -122,7 +125,7 @@ BOOL hasSubCategory(bool * hasSubCategory) {
 	return TRUE;
 }
 
-//Problem 4
+// Problem 4
 BOOL LeafSubDirectories() {
 	WIN32_FIND_DATA fileData;
 	HANDLE find = FindFirstFile(_T(".\\*"), &fileData);
@@ -168,7 +171,8 @@ BOOL LeafSubDirectories() {
 }
 
 
-//Problem 6
+// Problem 6
+// give only filtered (without executable's name etc.) arguments
 BOOL UniteFiles(int argc, TCHAR* argv[]) {
 
 	if(!CreateDirectory(_T("D:\\Dir"), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
@@ -187,20 +191,23 @@ BOOL UniteFiles(int argc, TCHAR* argv[]) {
 		file2 = CreateFile(argv[i], GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (file2 == INVALID_HANDLE_VALUE) {
 			PrintError();
-			CloseHandle(file);
+			CloseHandleSafe(file);
 			return FALSE;
 		}
 		if(!copyHTH(file2, file)) {
-			handleFileError(file, file2);
+			CloseHandleSafe(file);
+			CloseHandleSafe(file2);
+			return FALSE;
 		}
-		CloseHandle(file2);
+		CloseHandleSafe(file2);
 	}
-	CloseHandle(file);
+	CloseHandleSafe(file);
 	return TRUE;
 }
 
 
-//Problem 7
+// Problem 7
+// give only filtered (without executable's name etc.) arguments
 BOOL LastDirectory(int argc, TCHAR* argv[]) {
 	if (argc != 1) {
 		_tprintf(_T("Directory name not specified\n"));
@@ -274,3 +281,7 @@ BOOL LastDirectory(int argc, TCHAR* argv[]) {
 
 	return TRUE;
 }
+//
+//
+//// Problem 8
+//BOOL LastN
